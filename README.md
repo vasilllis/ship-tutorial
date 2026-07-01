@@ -20,7 +20,7 @@ get around.
 ## 2. Get the code (bash + git)
 
 ```bash
-git clone https://github.com/vasilllis/ship-tutorial.git
+git clone https://github.com/$username$/ship-tutorial.git
 cd ship-tutorial
 ls -lh
 ```
