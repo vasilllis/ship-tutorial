@@ -1,12 +1,13 @@
 # SHiP hands-on: bash, git & ROOT
 
-A short, hands-on tutorial for CERN summer students. You'll reconstruct a
-**Heavy Neutral Lepton (HNL)** — a long-lived particle that decays to two
-daughters at a displaced vertex — and study how detector resolution affects the
-measurement. Everything runs in a **Jupyter notebook on SWAN**, with **git** to
-keep your work and a little **bash** to get around.
+A short, hands-on tutorial for CERN summer students. It's a **guided walkthrough** of
+the everyday analysis commands — **plotting**, **cutting**, and **fitting** — on a real
+SHiP-like sample (a Heavy Neutral Lepton decaying to two daughters).
 
-It's deliberately simple: one notebook, the real analysis data, two `TODO` cells.
+**Nothing to solve.** Every cell is already written: you run them and watch what
+happens, then tweak a number here and there to see the effect. It all runs in a
+**Jupyter notebook on SWAN**, with **git** to get the code and a little **bash** to
+get around.
 
 ---
 
@@ -16,60 +17,49 @@ It's deliberately simple: one notebook, the real analysis data, two `TODO` cells
 2. Go to <https://swan.cern.ch> → log in → **Start my Session** (default stack is fine).
 3. Open the **terminal** (top-right icon).
 
-## 2. Get the repo (bash + git)
+## 2. Get the code (bash + git)
 
 ```bash
-git clone https://github.com/<ORG>/ship-tutorial.git
+git clone https://github.com/vasilllis/ship-tutorial.git
 cd ship-tutorial
-
-ls -lh            # look around
-ls -lh /eos/user/m/matclim/SHiPsim/SS_2026_data/   # the HNL sample lives on EOS
+ls -lh
 ```
 
-`clone` brought the project to SWAN; `ls` shows what's inside.
+`git clone` brings the project to SWAN; `ls` shows what's inside.
 
-## 3. Do the analysis (ROOT, in the notebook)
+## 3. Run the notebook (ROOT)
 
-> The notebook reads the sample directly from EOS
-> (`/eos/user/m/matclim/SHiPsim/SS_2026_data`). You have EOS access, so there's
-> nothing to download — the data is **not** stored in this git repo.
+The data lives on **EOS** at `/eos/experiment/ship/user/matclim/` — you have access, so
+there's nothing to download (the data is **not** in this git repo).
 
-In SWAN, open **`tutorial.ipynb`** and run the cells top to bottom (Shift+Enter).
-You fill in **two TODO cells**:
+In SWAN, open **`tutorial.ipynb`** and run the cells top to bottom (Shift+Enter). You'll:
 
-- **TODO 1** — reconstruct the transverse momentum `pt`.
-- **TODO 2** — print the mass resolution (StdDev) at each smearing level.
+- **plot** the decay vertex (the HNL decays tens of metres downstream) and the
+  reconstructed **invariant mass** (a sharp peak at 1 GeV),
+- **cut** on the fiducial decay volume and see how many events survive,
+- **fit** a Gaussian to the mass peak to measure it,
+- (optional) watch the peak **broaden** when detector resolution is added.
 
-Along the way you'll reconstruct the HNL mass (a sharp peak at **1 GeV**), see the
-**displaced decay vertex** at tens of metres, and watch the mass peak **broaden**
-as detector resolution worsens.
+Where you see **▸ Try**, change a value and re-run — that's the exploring part.
 
-## 4. Save your work (git)
+## 4. (optional) Save what you changed (git)
 
 ```bash
-git add tutorial.ipynb
-git commit -m "Complete the TODOs"
-git log --oneline
+git add -A
+git commit -m "Played with the tutorial"
 ```
 
 ---
-
-## Stretch goals
-
-- **Branch & merge.** Try a different smearing range on a branch, then merge it.
-- **Make (and resolve) a conflict** on the same line — the git skill that matters most.
-- **Go deeper.** The full analysis (vertex reconstruction via DOCA, vertex-resolution
-  study, five observables) is in `reference/` — `llp_simple_analysis.py` / `.C`, with a
-  detailed write-up in `reference/README.md`.
 
 ## Files
 
 ```
 ship-tutorial/
-├── tutorial.ipynb     <- start here
-├── solutions.ipynb    <- the completed version
-└── reference/         <- full original analysis (.C, .py, write-up)
-└── reference/         <- the full original analysis (optional, for the curious)
+├── tutorial.ipynb     <- run this on SWAN
+├── reference/         <- the full analysis (vertex reco + resolution study), for the curious
+├── README.md  SETUP.md  PUSH_TO_GITHUB.md
 ```
 
-The dataset is a simulated HNL of mass 1 GeV decaying to two daughters. Have fun.
+The full analysis (DOCA vertex reconstruction, five observables, the complete
+resolution study) is in `reference/llp_simple_analysis.py` / `.C`, with a detailed
+write-up in `reference/README.md`.

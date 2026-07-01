@@ -1,43 +1,31 @@
-#!/usr/bin/env python3
-"""Broken-down version of the reference LLP analysis, as a guided tutorial.
-Everything is provided; students run each cell and read the one-paragraph why."""
-import nbformat as nbf
-from nbformat.v4 import new_notebook, new_markdown_cell, new_code_cell
+"""SHiP hands-on: reconstruct an LLP step by step — code export of tutorial.ipynb
+Run on SWAN (a notebook shows the plots inline with %jsroot on)."""
 
-def md(s):   return new_markdown_cell(s.strip("\n"))
-def code(s): return new_code_cell(s.strip("\n"))
-cells = []
+# # SHiP hands-on: reconstruct an LLP, step by step
+#
+# We're going to build up a **real analysis** — the momentum-smearing study in
+# `reference/llp_simple_analysis.py` — one small piece at a time. A Heavy Neutral
+# Lepton (HNL) decays to two daughters at a displaced vertex; we will
+#
+# 1. reconstruct its **invariant mass**,
+# 2. reconstruct its **decay vertex** from the two daughter tracks, and
+# 3. watch how detector **momentum resolution** smears both.
+#
+# **Nothing to solve.** Run each cell (Shift+Enter), read the short note, look at the
+# plot. Where you see **▸ Try**, change a number and re-run.
 
-cells += [md(r"""
-# SHiP hands-on: reconstruct an LLP, step by step
+# ## 0. Setup
 
-We're going to build up a **real analysis** — the momentum-smearing study in
-`reference/llp_simple_analysis.py` — one small piece at a time. A Heavy Neutral
-Lepton (HNL) decays to two daughters at a displaced vertex; we will
-
-1. reconstruct its **invariant mass**,
-2. reconstruct its **decay vertex** from the two daughter tracks, and
-3. watch how detector **momentum resolution** smears both.
-
-**Nothing to solve.** Run each cell (Shift+Enter), read the short note, look at the
-plot. Where you see **▸ Try**, change a number and re-run.
-""")]
-
-cells += [md("## 0. Setup"),
-code(r"""
-%jsroot on
+# (notebook only) %jsroot on
 import ROOT
 print("ROOT", ROOT.gROOT.GetVersion())
-""")]
 
-cells += [md(r"""
-## 1. Open the data
+# ## 1. Open the data
+#
+# The sample lives on **EOS**. Each row of the tree `Events` is one HNL decay, with the
+# two daughters stored as short vectors (`d_px`, `d_py`, `d_pz`, `d_m`) and the true
+# decay vertex (`vtx_x`, `vtx_y`, `vtx_z`).
 
-The sample lives on **EOS**. Each row of the tree `Events` is one HNL decay, with the
-two daughters stored as short vectors (`d_px`, `d_py`, `d_pz`, `d_m`) and the true
-decay vertex (`vtx_x`, `vtx_y`, `vtx_z`).
-"""),
-code(r"""
 import os, glob
 EOS_DIR = "/eos/experiment/ship/user/matclim"
 named   = f"{EOS_DIR}/HNL_1.000e+00_1.000e+00_0.000e+00_1.000e+00_0.000e+00_data.root"
@@ -47,42 +35,33 @@ print("reading:", DATA)
 
 df = ROOT.RDataFrame("Events", DATA)
 print("events:", df.Count().GetValue())
-""")]
 
-cells += [md(r"""
-## 2. Step one of the analysis: require two daughters
+# ## 2. Step one of the analysis: require two daughters
+#
+# The very first line of the reference analysis keeps only events with exactly two
+# daughters. `Filter` does that; the label in quotes shows up in a cut-flow report.
 
-The very first line of the reference analysis keeps only events with exactly two
-daughters. `Filter` does that; the label in quotes shows up in a cut-flow report.
-"""),
-code(r"""
 base = df.Filter("d_px.size() == 2", "exactly two daughters")
 
 print("kept:", base.Count().GetValue(), "events")
 base.Report().Print()      # the cut-flow
-""")]
 
-cells += [md(r"""
-## 3. The displaced vertex
+# ## 3. The displaced vertex
+#
+# The HNL is long-lived, so it decays tens of metres downstream. Just histogram the
+# truth vertex position `vtx_z`:
 
-The HNL is long-lived, so it decays tens of metres downstream. Just histogram the
-truth vertex position `vtx_z`:
-"""),
-code(r"""
 c1 = ROOT.TCanvas("c1", "", 700, 500)
 h_z = base.Histo1D(("h_z", "decay vertex; z [m]; decays", 100, 0, 100), "vtx_z")
 h_z.Draw(); c1.Draw()
-""")]
 
-cells += [md(r"""
-## 4. Reconstruct the invariant mass
+# ## 4. Reconstruct the invariant mass
+#
+# Add the two daughter 4-momenta and take the mass:
+# $m=\sqrt{E^2-p_x^2-p_y^2-p_z^2}$. Each `Define` builds one new column; `Sum(...)`
+# adds the two entries of a daughter vector. (This is `llpFourMomentum` + `recoEnergy`
+# from the reference, written as short expressions.)
 
-Add the two daughter 4-momenta and take the mass:
-$m=\sqrt{E^2-p_x^2-p_y^2-p_z^2}$. Each `Define` builds one new column; `Sum(...)`
-adds the two entries of a daughter vector. (This is `llpFourMomentum` + `recoEnergy`
-from the reference, written as short expressions.)
-"""),
-code(r"""
 reco = (base
     .Define("d_E",   "sqrt(d_px*d_px + d_py*d_py + d_pz*d_pz + d_m*d_m)")  # per-daughter energy
     .Define("m_inv", "sqrt(pow(Sum(d_E),2) - pow(Sum(d_px),2) - pow(Sum(d_py),2) - pow(Sum(d_pz),2))")
@@ -92,17 +71,15 @@ reco = (base
 c2 = ROOT.TCanvas("c2", "", 700, 500)
 h_m = reco.Histo1D(("h_m", "invariant mass; m_{inv} [GeV]; events", 60, 0.9, 1.1), "m_inv")
 h_m.Draw(); c2.Draw()
-""")]
-cells += [md("A sharp peak at **1 GeV** — the HNL mass. **▸ Try:** plot `pt` instead of `m_inv`.")]
 
-cells += [md(r"""
-## 5. The toolbox (provided)
+# A sharp peak at **1 GeV** — the HNL mass. **▸ Try:** plot `pt` instead of `m_inv`.
 
-The next steps need a bit of geometry — reconstructing the decay vertex from two
-tracks, and a smearing function. Here they are as small C++ helpers, declared once so
-RDataFrame can use them by name. **You don't need to read this cell** — just run it.
-"""),
-code(r"""
+# ## 5. The toolbox (provided)
+#
+# The next steps need a bit of geometry — reconstructing the decay vertex from two
+# tracks, and a smearing function. Here they are as small C++ helpers, declared once so
+# RDataFrame can use them by name. **You don't need to read this cell** — just run it.
+
 if not hasattr(ROOT, "docaVertex"):
     ROOT.gInterpreter.Declare(r'''
     #include "Math/Vector3D.h"
@@ -138,16 +115,13 @@ if not hasattr(ROOT, "docaVertex"):
     ''')
 ROOT.gRandom.SetSeed(123)
 print("toolbox ready")
-""")]
 
-cells += [md(r"""
-## 6. Add detector resolution to the mass
+# ## 6. Add detector resolution to the mass
+#
+# A real detector doesn't measure momenta perfectly. Smear each daughter's $p_x,p_y$ by
+# $(1+\sigma\,\mathcal{N}(0,1))$ and rebuild the mass. This wraps the mass reconstruction
+# from step 4 so we can try several $\sigma$:
 
-A real detector doesn't measure momenta perfectly. Smear each daughter's $p_x,p_y$ by
-$(1+\sigma\,\mathcal{N}(0,1))$ and rebuild the mass. This wraps the mass reconstruction
-from step 4 so we can try several $\sigma$:
-"""),
-code(r"""
 def smeared_mass(sigma, name):
     return (base
         .Define("px_s", f"smear(d_px, {sigma})")
@@ -167,20 +141,18 @@ for i,(s,col) in enumerate(zip(sigmas, colors)):
     h.Draw("hist" if i==0 else "hist same")
     leg.AddEntry(h, f"#sigma = {int(s*100)}%", "l")
 leg.Draw(); c3.Draw()
-""")]
-cells += [md("The peak **broadens** as resolution worsens, while its centre stays at 1 GeV.")]
 
-cells += [md(r"""
-## 7. Reconstruct the decay vertex (DOCA)
+# The peak **broadens** as resolution worsens, while its centre stays at 1 GeV.
 
-Now the vertex. Each daughter is a straight **track**: a line through an anchor point
-(`perigee`) pointing along its momentum. The decay vertex is where the two lines come
-**closest** — the `docaVertex` helper returns that midpoint.
+# ## 7. Reconstruct the decay vertex (DOCA)
+#
+# Now the vertex. Each daughter is a straight **track**: a line through an anchor point
+# (`perigee`) pointing along its momentum. The decay vertex is where the two lines come
+# **closest** — the `docaVertex` helper returns that midpoint.
+#
+# The function below builds the vertex from the *smeared* directions and compares it to
+# the truth vertex, giving the residual in $z$: `dz_res = z_reco − z_true`.
 
-The function below builds the vertex from the *smeared* directions and compares it to
-the truth vertex, giving the residual in $z$: `dz_res = z_reco − z_true`.
-"""),
-code(r"""
 def vertex_residuals(sigma):
     return (base
         .Define("vtx",  "ROOT::Math::XYZVector(vtx_x, vtx_y, vtx_z)")
@@ -196,17 +168,14 @@ def vertex_residuals(sigma):
         .Define("dz_res", "doca[3] - vtx_z")          # longitudinal vertex residual
     )
 print("built vertex_residuals()")
-""")]
 
-cells += [md(r"""
-### Closure check
+# ### Closure check
+#
+# At $\sigma=0$ the smeared directions equal the true ones, so the reconstructed vertex
+# **is** the truth and `dz_res` is essentially zero. Turn on smearing and it spreads out.
+# This zero-at-zero behaviour is a built-in sanity check that the reconstruction is
+# consistent.
 
-At $\sigma=0$ the smeared directions equal the true ones, so the reconstructed vertex
-**is** the truth and `dz_res` is essentially zero. Turn on smearing and it spreads out.
-This zero-at-zero behaviour is a built-in sanity check that the reconstruction is
-consistent.
-"""),
-code(r"""
 c4 = ROOT.TCanvas("c4", "", 800, 600)
 leg = ROOT.TLegend(0.62, 0.66, 0.88, 0.88); leg.SetBorderSize(0)
 hists = []
@@ -218,37 +187,23 @@ for i,(s,col) in enumerate(zip(sigmas, colors)):
     h.Draw("hist" if i==0 else "hist same")
     leg.AddEntry(h, f"#sigma = {int(s*100)}%", "l")
 leg.Draw(); c4.Draw()
-""")]
 
-cells += [md(r"""
-## 8. Put a number on it: vertex resolution vs smearing
+# ## 8. Put a number on it: vertex resolution vs smearing
+#
+# The width of that residual **is** the vertex resolution. Print the standard deviation
+# of `dz_res` at each smearing level — ~0 at $\sigma=0$ (closure), growing with $\sigma$.
 
-The width of that residual **is** the vertex resolution. Print the standard deviation
-of `dz_res` at each smearing level — ~0 at $\sigma=0$ (closure), growing with $\sigma$.
-"""),
-code(r"""
 print("sigma   vertex resolution sigma_z")
 for s in sigmas:
     sz = vertex_residuals(s).StdDev("dz_res").GetValue()
     print(f"{s:>5}   {sz:.3f} m")
-""")]
 
-cells += [md(r"""
-## That's the analysis
-
-You reconstructed the HNL **mass** and its **decay vertex**, then measured how detector
-**momentum resolution** blurs each. That's exactly what `reference/llp_simple_analysis.py`
-does — plus two more observables ($p_T$, the transverse residual $\Delta r$, the vertex
-impact parameter) and a nicer `THStack` layout. Open it and compare.
-
-**▸ Try:** in `vertex_residuals`, also define a transverse residual
-`dr_res = sqrt(doca[1]^2 + doca[2]^2) - sqrt(vtx_x^2 + vtx_y^2)` and histogram it.
-""")]
-
-nb = new_notebook(); nb.cells = cells
-nb.metadata["kernelspec"] = {"display_name":"Python 3","language":"python","name":"python3"}
-nb.metadata["language_info"] = {"name":"python"}
-import nbformat
-with open("tutorial.ipynb","w") as fh: nbformat.write(nb, fh)
-nbformat.validate(nbformat.read("tutorial.ipynb", as_version=4))
-print("valid: tutorial.ipynb (", len(nb.cells), "cells )")
+# ## That's the analysis
+#
+# You reconstructed the HNL **mass** and its **decay vertex**, then measured how detector
+# **momentum resolution** blurs each. That's exactly what `reference/llp_simple_analysis.py`
+# does — plus two more observables ($p_T$, the transverse residual $\Delta r$, the vertex
+# impact parameter) and a nicer `THStack` layout. Open it and compare.
+#
+# **▸ Try:** in `vertex_residuals`, also define a transverse residual
+# `dr_res = sqrt(doca[1]^2 + doca[2]^2) - sqrt(vtx_x^2 + vtx_y^2)` and histogram it.
